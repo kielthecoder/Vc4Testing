@@ -8,6 +8,21 @@ using Crestron.SimplSharpPro.UI;
 
 namespace Vc4Test1
 {
+    public enum SystemJoins
+    {
+        PowerOn = 10,
+        PowerOff = 11,
+        PowerToggle = 12,
+        PowerTransition = 13
+    }
+
+    public enum SystemFb
+    {
+        PowerOnFb = 10,
+        PowerOffFb = 11,
+        PowerToggleFb = 12
+    }
+
     public class ControlSystem : CrestronControlSystem
     {
         private XpanelForSmartGraphics tp1;
@@ -34,13 +49,30 @@ namespace Vc4Test1
             try
             {
                 tp1 = new XpanelForSmartGraphics(0x03, this);
+                
+                tp1.OnlineStatusChange += tp_OnlineChange;
+                tp1.UserSpecifiedObject = new Action<bool>(online => { if (online) UpdateFeedback(); });
+                
                 tp1.SigChange += tp_SigChange;
-                tp1.BooleanOutput[12].UserObject = new Action<bool>(b => { if (b) ToggleSystemPower(); });
+                tp1.BooleanOutput[(uint)SystemJoins.PowerToggle].UserObject = new Action<bool>(press => { if (press) ToggleSystemPower(); });
+                tp1.BooleanOutput[(uint)SystemJoins.PowerTransition].UserObject = new Action<bool>(done => { if (done) UpdatePowerStatusText(); });
+                
                 tp1.Register();
             }
             catch (Exception e)
             {
                 ErrorLog.Error("Error in InitializeSystem: {0}", e.Message);
+            }
+        }
+
+        public void tp_OnlineChange(GenericBase dev, OnlineOfflineEventArgs args)
+        {
+            var obj = dev.UserSpecifiedObject;
+
+            if (obj is Action<bool>)
+            {
+                var func = (Action<bool>)obj;
+                func(args.DeviceOnLine);
             }
         }
 
@@ -55,12 +87,26 @@ namespace Vc4Test1
             }
         }
 
+        void UpdateFeedback()
+        {
+            tp1.BooleanInput[(uint)SystemFb.PowerOnFb].BoolValue = bSystemPowerOn;
+            tp1.BooleanInput[(uint)SystemFb.PowerOffFb].BoolValue = !bSystemPowerOn;
+            tp1.BooleanInput[(uint)SystemFb.PowerToggleFb].BoolValue = bSystemPowerOn;
+        }
+
+        void UpdatePowerStatusText()
+        {
+            if (bSystemPowerOn)
+                tp1.StringInput[10].StringValue = "ON";
+            else
+                tp1.StringInput[10].StringValue = "OFF";
+        }
+
         void ToggleSystemPower()
         {
             bSystemPowerOn = !bSystemPowerOn;
 
-            tp1.BooleanInput[10].BoolValue = bSystemPowerOn;
-            tp1.BooleanInput[11].BoolValue = !bSystemPowerOn;
+            UpdateFeedback();
         }
     }
 }
