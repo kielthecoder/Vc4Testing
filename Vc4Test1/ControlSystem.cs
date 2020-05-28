@@ -5,6 +5,7 @@ using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.Diagnostics;
 using Crestron.SimplSharpPro.DeviceSupport;
 using Crestron.SimplSharpPro.UI;
+using Crestron.SimplSharpPro.DM.Streaming;
 
 namespace Vc4Test1
 {
@@ -26,6 +27,8 @@ namespace Vc4Test1
     public class ControlSystem : CrestronControlSystem
     {
         private XpanelForSmartGraphics tp1;
+        private DmNvxE30 txLaptop, txCamera, txCodec;
+        private DmNvxD30 rxDisplay, rxCodecCamera, rxCodecContent;
         private bool bSystemPowerOn;
 
         public ControlSystem()
@@ -48,6 +51,8 @@ namespace Vc4Test1
         {
             try
             {
+                // Touchpanels
+
                 tp1 = new XpanelForSmartGraphics(0x03, this);
                 
                 tp1.OnlineStatusChange += tp_OnlineChange;
@@ -58,6 +63,28 @@ namespace Vc4Test1
                 tp1.BooleanOutput[(uint)SystemJoins.PowerTransition].UserObject = new Action<bool>(done => { if (done) UpdatePowerStatusText(); });
                 
                 tp1.Register();
+
+                // Transmitters
+
+                txLaptop = new DmNvxE30(0x10, this);
+                txLaptop.Register();
+
+                txCamera = new DmNvxE30(0x11, this);
+                txCamera.Register();
+
+                txCodec = new DmNvxE30(0x12, this);
+                txCodec.Register();
+
+                // Receivers
+
+                rxDisplay = new DmNvxD30(0x13, this);
+                rxDisplay.Register();
+
+                rxCodecCamera = new DmNvxD30(0x14, this);
+                rxCodecCamera.Register();
+
+                rxCodecContent = new DmNvxD30(0x15, this);
+                rxCodecContent.Register();
             }
             catch (Exception e)
             {
