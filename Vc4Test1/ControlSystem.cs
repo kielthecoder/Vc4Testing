@@ -64,17 +64,6 @@ namespace Vc4Test1
                 
                 tp1.Register();
 
-                // Transmitters
-
-                txLaptop = new DmNvxE30(0x10, this);
-                txLaptop.Register();
-
-                txCamera = new DmNvxE30(0x11, this);
-                txCamera.Register();
-
-                txCodec = new DmNvxE30(0x12, this);
-                txCodec.Register();
-
                 // Receivers
 
                 rxDisplay = new DmNvxD30(0x13, this);
@@ -85,6 +74,23 @@ namespace Vc4Test1
 
                 rxCodecContent = new DmNvxD30(0x15, this);
                 rxCodecContent.Register();
+
+                // Transmitters
+
+                txLaptop = new DmNvxE30(0x10, this);
+                txLaptop.SourceTransmit.StreamChange += tx_StreamChange;
+                txLaptop.UserSpecifiedObject = new Action<string>(url => { SetStreamURL(rxCodecContent, url); });
+                txLaptop.Register();
+
+                txCamera = new DmNvxE30(0x11, this);
+                txCamera.SourceTransmit.StreamChange += tx_StreamChange;
+                txCamera.UserSpecifiedObject = new Action<string>(url => { SetStreamURL(rxCodecCamera, url); });
+                txCamera.Register();
+
+                txCodec = new DmNvxE30(0x12, this);
+                txCodec.SourceTransmit.StreamChange += tx_StreamChange;
+                txCodec.UserSpecifiedObject = new Action<string>(url => { SetStreamURL(rxDisplay, url); });
+                txCodec.Register();
             }
             catch (Exception e)
             {
@@ -114,6 +120,18 @@ namespace Vc4Test1
             }
         }
 
+        public void tx_StreamChange(Stream stream, StreamEventArgs args)
+        {
+            var obj = (DmNvxE30)stream.Owner;
+            var uo = obj.UserSpecifiedObject;
+
+            if (uo is Action<string>)
+            {
+                var func = (Action<string>)uo;
+                func(obj.Control.ServerUrlFeedback.StringValue);
+            }
+        }
+
         void UpdateFeedback()
         {
             tp1.BooleanInput[(uint)SystemFb.PowerOnFb].BoolValue = bSystemPowerOn;
@@ -134,6 +152,11 @@ namespace Vc4Test1
             bSystemPowerOn = !bSystemPowerOn;
 
             UpdateFeedback();
+        }
+
+        void SetStreamURL(DmNvxD30 rx, string url)
+        {
+            rx.Control.ServerUrl.StringValue = url;
         }
     }
 }
